@@ -51,7 +51,7 @@ Executable fnordspace
   Main-is: Main.hs             
   
   -- Packages needed in order to build this package.
-  Build-depends: base, hoauth       
+  Build-depends: base, containers, mtl, bytestring, network, HTTP >= 4000, hoauth       
   
   -- Modules not exported by this package.
   -- Other-modules:       
