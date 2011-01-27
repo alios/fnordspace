@@ -46,13 +46,13 @@ import qualified Network.OAuth.Http.Request as R
 import qualified Network.OAuth.Http.Response as Re
 
 
--- | 'NetworkBrowser' is a hoauth 'HttpClient' implementation
--- using the network packages 'Browser'
+-- | 'Browser' is a hoauth 'HttpClient' implementation using "Network.Browser"
 data Browser = Browser
 
 instance HttpClient Browser where  
   runClient _ = liftIO.runBrowserClient
 
+-- | implementation of the 'runClient' for "Network.Browser"
 runBrowserClient :: R.Request -> IO (Either String Re.Response)
 runBrowserClient r =
   let action = request $ req2req r
@@ -64,6 +64,7 @@ runBrowserClient r =
             payload = rspBody resp
         return $ Right $ Re.RspHttp status reason headers payload
   
+
 req2req :: R.Request -> Request ByteString
 req2req req = 
   let uri = fromJust $ parseURI $ R.showURL req 
