@@ -31,7 +31,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -}
 
-module Network.OAuth.Http.Browser (Browser(..), browserGET, browserPOST) where
+module Network.OAuth.Http.Browser (Browser(..)) where
 
 import Data.Maybe (fromJust)
 import Control.Monad.Cont (liftIO)
@@ -51,12 +51,6 @@ newtype Browser = Browser RequestMethod
 
 instance HttpClient Browser where  
   runClient (Browser m) = liftIO.(runBrowserClient m)
-
--- | a browser fixed to GET requests
-browserGET  = Browser GET
-
--- | a browser fixed to POST requests
-browserPOST = Browser POST 
 
 -- | implementation of the 'runClient' for "Network.Browser"
 runBrowserClient :: RequestMethod -> R.Request -> IO (Either String Re.Response)
