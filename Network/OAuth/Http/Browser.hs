@@ -1,5 +1,5 @@
 {-
-Copyright (c)2010, Markus Barenhoff
+Copyright (c)2011, Markus Barenhoff, Lotte Steenbrink
 
 All rights reserved.
 
@@ -47,15 +47,15 @@ import qualified Network.OAuth.Http.Response as Re
 
 
 -- | 'Browser' is a hoauth 'HttpClient' implementation using "Network.Browser"
-data Browser = Browser
+newtype Browser = Browser RequestMethod 
 
 instance HttpClient Browser where  
-  runClient _ = liftIO.runBrowserClient
+  runClient (Browser m) = liftIO.(runBrowserClient m)
 
 -- | implementation of the 'runClient' for "Network.Browser"
-runBrowserClient :: R.Request -> IO (Either String Re.Response)
-runBrowserClient r =
-  let action = request $ req2req r
+runBrowserClient :: RequestMethod -> R.Request -> IO (Either String Re.Response)
+runBrowserClient m r =
+  let action = request $ req2req m r
   in do (uri, resp) <- browse action
         let (ra,rb,rc) = rspCode resp
             status = ra * 100 + rb * 10 + rc
@@ -65,17 +65,9 @@ runBrowserClient r =
         return $ Right $ Re.RspHttp status reason headers payload
   
 
-req2req :: R.Request -> Request ByteString
-req2req req = 
+req2req :: RequestMethod -> R.Request -> Request ByteString
+req2req method req = 
   let uri = fromJust $ parseURI $ R.showURL req 
-      method = case (R.method req) of
-        R.GET -> GET
-        R.POST  -> POST
-        R.PUT -> PUT
-        R.DELETE -> DELETE
-        R.TRACE -> TRACE
-        R.CONNECT -> CONNECT
-        R.HEAD -> HEAD
       headers = map (\(k,v) -> mkHeader (HdrCustom k) v) 
                 $ R.toList $ R.reqHeaders req
       body = R.reqPayload req
