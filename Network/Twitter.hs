@@ -1,3 +1,5 @@
+{-# LANGUAGE NoMonomorphismRestriction #-}
+
 {-
 Copyright (c) 2011 fnordspace labs 
 All rights reserved.
@@ -32,56 +34,33 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -}
 
-module Network.OAuth.Http.Browser (Browser(..)) where
+module Network.Twitter () where
 
 import Data.Maybe (fromJust)
 import Control.Monad.Cont (liftIO)
+import qualified Data.ByteString.Lazy.Char8 as BS
+import Network.OAuth.Consumer
+import Network.OAuth.Http.Request
+import Network.OAuth.Http.Browser
 
-import Network.URI
-import Network.HTTP
-import Network.Browser
-import Data.ByteString.Lazy (ByteString)
+consumerKey = "mJKuzrfsLKrccB4SuHRnfw"
+consumerSec = "EwvmSWYidl6pf7bJVyxMGMQ4UbggkUSN5IZLmrQsYs"
 
-import Network.OAuth.Http.HttpClient
-import qualified Network.OAuth.Http.Request as R
-import qualified Network.OAuth.Http.Response as Re
+requestTokenURL = "https://api.twitter.com/oauth/request_token"  
+accessTokenURL = "https://api.twitter.com/oauth/access_token"
+authorizeURL = "https://api.twitter.com/oauth/authorize"
 
-
--- | 'Browser' is a hoauth 'HttpClient' implementation using "Network.Browser"
-data Browser = Browser
-
-instance HttpClient Browser where  
-  runClient _ = liftIO.runBrowserClient
-
--- | implementation of the 'runClient' for "Network.Browser"
-runBrowserClient :: R.Request -> IO (Either String Re.Response)
-runBrowserClient r =
-  let action = request $ req2req r
-  in do (uri, resp) <- browse action
-        let (ra,rb,rc) = rspCode resp
-            status = ra * 100 + rb * 10 + rc
-            reason = rspReason resp
-            headers = R.fromList $ map (\h -> (show $ hdrName h, hdrValue h)) $ rspHeaders resp
-            payload = rspBody resp
-        return $ Right $ Re.RspHttp status reason headers payload
   
-
-req2req :: R.Request -> Request ByteString
-req2req req = 
-  let uri = fromJust $ parseURI $ R.showURL req 
-      method = case (R.method req) of
-        R.GET -> GET
-        R.POST  -> POST
-        R.PUT -> PUT
-        R.DELETE -> DELETE
-        R.TRACE -> TRACE
-        R.CONNECT -> CONNECT
-        R.HEAD -> HEAD
-      headers = map (\(k,v) -> mkHeader (HdrCustom k) v) 
-                $ R.toList $ R.reqHeaders req
-      body = R.reqPayload req
-  in Request uri method headers body
-
-
-
+reqUrl     = (fromJust . parseURL $ requestTokenURL)
+reqUrlPost = reqUrl { method = POST, reqPayload = BS.pack consumerSec}
+accUrl    = fromJust . parseURL $ accessTokenURL
+srvUrl    = fromJust . parseURL $ "http://service/path/to/resource/"
+authUrl   = ((authorizeURL ++ "?oauth_token=")++) . findWithDefault ("oauth_token","ERROR") . oauthParams
+app       = Application consumerKey consumerSec OOB
+response  = runOAuthM (fromApplication app) $ 
+            do { signRq2 HMACSHA1 Nothing reqUrlPost >>= oauthRequest Browser
+               ; cliAskAuthorization authUrl
+--               ; signRq2 HMACSHA1 Nothing accUrl >>= oauthRequest Browser
+--               ; signRq2 HMACSHA1 Nothing srvUrl >>= serviceRequest Browser
+               }
 
