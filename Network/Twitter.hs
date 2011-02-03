@@ -58,9 +58,10 @@ srvUrl    = fromJust . parseURL $ "http://service/path/to/resource/"
 authUrl   = ((authorizeURL ++ "?oauth_token=")++) . findWithDefault ("oauth_token","ERROR") . oauthParams
 app       = Application consumerKey consumerSec OOB
 response  = runOAuthM (fromApplication app) $ 
-            do { signRq2 HMACSHA1 Nothing reqUrlPost >>= oauthRequest Browser
+            do { browser <- mkBrowserM
+               ; signRq2 HMACSHA1 Nothing reqUrlPost >>= oauthRequest browser
                ; cliAskAuthorization authUrl
---               ; signRq2 HMACSHA1 Nothing accUrl >>= oauthRequest Browser
---               ; signRq2 HMACSHA1 Nothing srvUrl >>= serviceRequest Browser
+               ; signRq2 HMACSHA1 Nothing accUrl >>= oauthRequest browser
+               ; signRq2 HMACSHA1 Nothing srvUrl >>= serviceRequest browser
                }
 

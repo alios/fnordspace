@@ -1,3 +1,5 @@
+{-# LANGUAGE NoMonomorphismRestriction #-}
+
 {-
 Copyright (c) 2011 fnordspace labs 
 All rights reserved.
@@ -32,7 +34,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -}
 
-module Network.OAuth.Http.Browser (Browser(..)) where
+module Network.OAuth.Http.Browser (mkBrowser, mkBrowserM) where
 
 import Data.Maybe (fromJust)
 import Control.Monad.Cont (liftIO)
@@ -46,22 +48,33 @@ import Network.OAuth.Http.HttpClient
 import qualified Network.OAuth.Http.Request as R
 import qualified Network.OAuth.Http.Response as Re
 
+type BrowserS = BrowserState (HandleStream ByteString)
 
 -- | 'Browser' is a hoauth 'HttpClient' implementation using "Network.Browser"
-data Browser = Browser
+data Browser = Browser BrowserS
+
+-- | Create a new 'Browser' instance
+mkBrowser = 
+  do state <- browse getBrowserState
+     return $ Browser state 
+
+-- | general monadic version of 'mkBrowser'
+mkBrowserM = liftIO mkBrowser
 
 instance HttpClient Browser where  
-  runClient _ = liftIO.runBrowserClient
+  runClient (Browser state) = liftIO.(runBrowserClient state)
 
 -- | implementation of the 'runClient' for "Network.Browser"
-runBrowserClient :: R.Request -> IO (Either String Re.Response)
-runBrowserClient r =
-  let action = request $ req2req r
-  in do (uri, resp) <- browse action
+runBrowserClient :: BrowserS -> R.Request -> IO (Either String Re.Response)
+runBrowserClient state r =
+  let action = withBrowserState state $ request $ req2req r
+  in do (uri, resp) <- browse  action
         let (ra,rb,rc) = rspCode resp
             status = ra * 100 + rb * 10 + rc
             reason = rspReason resp
-            headers = R.fromList $ map (\h -> (show $ hdrName h, hdrValue h)) $ rspHeaders resp
+            headers = R.fromList $ 
+                      map (\h -> (show $ hdrName h, hdrValue h)) $ 
+                      rspHeaders resp
             payload = rspBody resp
         return $ Right $ Re.RspHttp status reason headers payload
   
